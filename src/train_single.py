@@ -1,10 +1,29 @@
 import os
+import time
 import torch
 import torch.optim as optim
 from model import PhysNetED
 from data_single import load_video_frames
 from loss import neg_pearson_loss
 import numpy as np
+
+# Simple checkpoint helper for Colab (writes to Drive)
+checkpoint_dir = "/content/drive/MyDrive/physnet/checkpoints"
+os.makedirs(checkpoint_dir, exist_ok=True)
+
+
+def save_ckpt(model, optimizer, epoch, step, best_loss=None):
+    ts = time.strftime("%Y%m%d-%H%M%S")
+    path = f"{checkpoint_dir}/physnet_e{epoch}_s{step}.pt"
+    torch.save({
+        "epoch": epoch,
+        "step": step,
+        "model_state": model.state_dict(),
+        "optimizer_state": optimizer.state_dict(),
+        "best_loss": best_loss,
+    }, path)
+    print(f"saved {path}")
+    return path
 
 # For Google Colab users
 
@@ -41,7 +60,7 @@ labels_t = torch.FloatTensor(labels).unsqueeze(0)                    # (1, T)
 # ----------------------------
 # Force CPU for debugging (optional, can use GPU too)
 # ----------------------------
-device = torch.device("cpu")  # change to "cuda" if GPU available
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # change to "cuda" if GPU available
 print("Using device:", device)
 
 # ----------------------------
