@@ -21,6 +21,9 @@ MODEL_PATH = "models/physnet_single_debug.pth"  # Path to your trained model
 OUTPUT_PATH = "predicted_ppg.npy"         # Where to save predicted PPG signal
 PLOT_RESULTS = True                        # Set to True to visualize results
 
+# ----------------------------
+# Setup device
+# ----------------------------
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
