@@ -40,6 +40,24 @@ python realtime_inference.py
 python export_model.py
 ```
 
+## How it Works? (rPPG Pipeline)
+
+1.  **Face Detection (Webcam/Mobile Camera)**: The browser captures frames and sends them to the Flask server. MediaPipe detects the face and extracts the **Forehead ROI (Region of Interest)**.
+2.  **Forehead Analysis**: The forehead contains a dense network of capillaries. Blood volume changes with each heartbeat, causing subtle skin color variations (invisible to the naked eye).
+3.  **PhysNet Model (rPPG Extraction)**: A 3D CNN model (PhysNet) processes temporal sequences of frames to amplify these variations and predict a raw **PPG (photoplethysmography) signal**.
+4.  **Signal Processing**:
+    *   **Bandpass Filter**: Removes noise outside the typical heart rate range (0.7 - 3.0 Hz).
+    *   **FFT (Fast Fourier Transform)**: Converts the PPG signal from time to frequency domain to find the dominant "pulse" frequency.
+5.  **BPM & Stability**: The dominant frequency is converted to **BPM**. The Stability Manager rejects outliers and smooths the reading over time for a steady output.
+
+## Deploying to Vercel
+
+1.  **Connect Repo to Vercel**: Connect your GitHub repository to Vercel.
+2.  **Configuration**: The project includes a `vercel.json` file to handle the Flask deployment.
+3.  **Environment Variables**: Ensure `PORT` is not restricted (Vercel handles this automatically).
+4.  **Statelessness Note**: Vercel Serverless Functions are **stateless**. The current in-memory `user_states` dictionary will be cleared when the function instance scales down or restarts. For production, you should replace this with a persistent store (e.g., Redis) or move inference to the client-side using ONNX Runtime Web.
+5.  **Limits**: Serverless functions have a size limit (usually 250MB). PyTorch and MediaPipe can be heavy; if you exceed this limit, consider using a more lightweight inference engine or a different cloud provider (e.g., AWS Lambda with layers, or a dedicated VPS).
+
 ## Mobile Performance Tips
 *   **Good Lighting**: Essential for the camera to pick up blood volume changes in the skin.
 *   **Keep Steady**: Motion artifacts can dominate the rPPG signal.

@@ -37,7 +37,7 @@ def process_frame():
         user_states[client_id] = {
             'frames_buffer': [],
             'ppg_signal': [],
-            'processor': SignalProcessor(fps=30, window_size=64),
+            'processor': SignalProcessor(fps=10, window_size=64), # Sync with frontend 10 FPS
             'stability': StabilityManager()
         }
 
@@ -54,8 +54,10 @@ def process_frame():
     quality = "Poor"
 
     if result is not None:
-        face, _ = result
-        face_normalized = face / 255.0
+        face, forehead = result
+        # Use forehead ROI if available, otherwise fallback to face
+        roi = forehead if (forehead is not None and forehead.size > 0) else face
+        face_normalized = cv2.resize(roi, (128, 128)) / 255.0
         state['frames_buffer'].append(face_normalized)
 
         if len(state['frames_buffer']) > 64:
@@ -71,8 +73,8 @@ def process_frame():
 
             if len(state['ppg_signal']) >= 64:
                 raw_bpm, confidence = state['processor'].find_bpm(np.array(state['ppg_signal']))
-                bpm = stability.update_bpm(raw_bpm)
-                quality = stability.get_signal_quality(confidence)
+                bpm = state['stability'].update_bpm(raw_bpm)
+                quality = state['stability'].get_signal_quality(confidence)
 
     return jsonify({
         'bpm': f"{bpm:.1f}",

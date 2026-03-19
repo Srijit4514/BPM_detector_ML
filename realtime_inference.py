@@ -48,8 +48,10 @@ def main():
         # Process frame
         result = detector.extract_face(frame)
         if result is not None:
-            face, _ = result
-            face_normalized = face / 255.0
+            face, forehead = result
+            # Use forehead ROI if available, otherwise fallback to face
+            roi = forehead if (forehead is not None and forehead.size > 0) else face
+            face_normalized = cv2.resize(roi, (128, 128)) / 255.0
             frames_buffer.append(face_normalized)
 
             # Keep buffer size fixed
