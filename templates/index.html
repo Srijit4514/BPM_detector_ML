@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time rPPG BPM Detector</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 20px auto; padding: 20px; background: white; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        video { width: 100%; border-radius: 10px; }
+        .stats { display: flex; justify-content: space-around; margin-top: 20px; font-size: 1.2em; }
+        .label { font-weight: bold; color: #555; }
+        .value { color: #007bff; }
+        #canvas { display: none; }
+        .instructions { margin-top: 15px; color: #666; font-style: italic; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>BPM Detector</h1>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" width="640" height="480"></canvas>
+
+    <div class="stats">
+        <div>
+            <div class="label">BPM</div>
+            <div id="bpm" class="value">0</div>
+        </div>
+        <div>
+            <div class="label">Quality</div>
+            <div id="quality" class="value">Poor</div>
+        </div>
+    </div>
+
+    <div style="margin-top: 20px;">
+        <canvas id="ppgChart" width="400" height="200"></canvas>
+    </div>
+
+    <div class="instructions">
+        Keep your face steady and ensure good lighting.
+    </div>
+</div>
+
+<script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const bpmDisplay = document.getElementById('bpm');
+    const qualityDisplay = document.getElementById('quality');
+    const clientId = 'user_' + Math.random().toString(36).substr(2, 9);
+
+    // Initialize Chart.js
+    const chartCtx = document.getElementById('ppgChart').getContext('2d');
+    const ppgChart = new Chart(chartCtx, {
+        type: 'line',
+        data: {
+            labels: Array.from({length: 50}, (_, i) => i),
+            datasets: [{
+                label: 'rPPG Signal',
+                data: [],
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1,
+                pointRadius: 0
+            }]
+        },
+        options: {
+            scales: {
+                y: { beginAtZero: false },
+                x: { display: false }
+            },
+            animation: false
+        }
+    });
+
+    // Access the camera
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => { video.srcObject = stream; })
+        .catch(err => { console.error("Error accessing camera: ", err); });
+
+    // Send frames to the server
+    async function captureAndProcess() {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const imageData = canvas.toDataURL('image/jpeg', 0.5);
+
+        try {
+            const response = await fetch('/process_frame', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    image: imageData,
+                    client_id: clientId
+                })
+            });
+            const data = await response.json();
+            bpmDisplay.innerText = data.bpm;
+            qualityDisplay.innerText = data.quality;
+
+            // Update chart
+            if (data.signal && data.signal.length > 0) {
+                ppgChart.data.datasets[0].data = data.signal;
+                ppgChart.update();
+            }
+        } catch (err) {
+            console.error("Processing error: ", err);
+        }
+    }
+
+    // Process frames periodically (approx 10 FPS)
+    setInterval(captureAndProcess, 100);
+</script>
+
+</body>
+</html>
