@@ -33,8 +33,9 @@ def load_video_frames(video_path, ppg_array):
             break
 
         # Detect face & crop
-        face = detector.extract_face(frame)
-        if face is not None:
+        result = detector.extract_face(frame)
+        if result is not None:
+            face, _ = result
             # normalize pixel values to [0,1]
             frame_list.append(face / 255.0)
 
